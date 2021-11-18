@@ -1,28 +1,38 @@
 import socket
-import threading
+from threading import Thread, Lock
 
 
 HOST = '127.0.0.1'
 PORT = 50007
 
 
-def send_message(message, mate_ind):
-    clients[mate_ind].send(message)
+def send_message(message, mate):
+    mate.send(message)
 
 
-def handle(client):
+def handle(client, mate):
     while True:
-        index = clients.index(client)
-        mate_index = (index + 1) if (index % 2 == 0) else index - 1
         try:
             message = client.recv(1024)
-            send_message(message, mate_index)
+            if message.decode('ascii') == 'move_to_waiting_list':
+                waiting_list.append(mate)
+                mate.send('Waiting for the next mate...'.encode('ascii'))
+                break
         except socket.error:
-            del clients[index]
             client.close()
+            index = clients.index(client)
             nickname = nicknames[index]
-            send_message(f'{nickname} left!'.encode('ascii'), mate_index)
+            mate.send(f'{nickname} left!'.encode('ascii'))
+            mate.send('move_to_waiting_list'.encode('ascii'))
+
             del nicknames[index]
+            del clients[index]
+            break
+        try:
+            mate.send(message)
+        except socket.error:
+            waiting_list.append(mate)
+            mate.send('Waiting for the next mate...'.encode('ascii'))
             break
 
 
@@ -40,19 +50,47 @@ def receive():
         client.send('Connected to server'.encode('ascii'))
 
         if len(clients) % 2 == 0:
-            current_client_thread = threading.Thread(target=handle, args=(client,))
-            current_client_thread.start()
+            client2 = waiting_list[0]
+            del waiting_list[0]
 
-            prev_client = clients[-2]
-            prev_client_thread = threading.Thread(target=handle, args=(prev_client,))
-            prev_client_thread.start()
+            client_thread = Thread(target=handle, args=(client, client2))
+            client_thread.start()
+            print('started new thread client 1')
 
+            client2_thread = Thread(target=handle, args=(client2, client))
+            client2_thread.start()
+            print('started new thread client 2')
+        else:
+            waiting_list.append(client)
+
+
+def serve_waiting_list(lock):
+    while True:
+        lock.acquire()
+        print('checking the queue')
+        if waiting_list and len(waiting_list) % 2 == 0:
+            client1_thread = Thread(target=handle, args=(waiting_list[0], waiting_list[1]))
+            client2_thread = Thread(target=handle, args=(waiting_list[1], waiting_list[0]))
+            client1_thread.start()
+            client2_thread.start()
+            del waiting_list[0]
+            del waiting_list[1]
+        lock.release()
+
+
+clients = []
+nicknames = []
+waiting_list = []
+
+
+thread_lock = Lock()
+
+serve_waiting_list_thread = Thread(target=serve_waiting_list, args=(thread_lock,))
+serve_waiting_list_thread.start()
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen()
-
-clients = []
-nicknames = []
+print('Server is running')
 
 receive()

@@ -8,6 +8,8 @@ def receive():
             message = client.recv(1024).decode('ascii')
             if message == 'NICK':
                 client.send(nickname.encode('ascii'))
+            elif message == 'move_to_waiting_list':
+                client.send(message.encode('ascii'))
             else:
                 print(message)
         except socket.error as e:
