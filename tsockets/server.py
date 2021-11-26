@@ -7,7 +7,16 @@ class Room:
         self.room_clients = room_clients
 
     def get_mate(self, client):
-        pass
+        if len(self.room_clients) > 1:
+            mate_ind = (self.room_clients.index(client) + 1) % 2
+            mate = self.room_clients[mate_ind]
+
+            # print(nicknames[clients.index(client)], ': mate ', mate, nicknames[clients.index(mate)])
+
+            return mate
+
+    def size(self):
+        return len(self.room_clients)
 
 
 clients = []
@@ -21,28 +30,9 @@ def handle_client(client, room):
     while True:
 
         print(nicknames[clients.index(client)], ': waiting rooms ', waiting_rooms)
-        print(nicknames[clients.index(client)], ': room clients ', room.room_clients)
+        # print(nicknames[clients.index(client)], ': room clients ', room.room_clients)
 
-        mate = None
-        if len(room.room_clients) > 1:
-            mate_ind = (room.room_clients.index(client) + 1) % 2
-            mate = room.room_clients[mate_ind]
-            print(nicknames[clients.index(client)], ': mate ', mate, nicknames[clients.index(mate)])
-        try:
-            message = client.recv(1024)
-            if message == 'finding_new_conversation':
-                finding_new_conversation = True
-        except:
-            client.close()
-            index = clients.index(client)
-            nickname = nicknames[index]
-            if mate:
-                mate.send(f'{nickname} left!'.encode('ascii'))
-                mate.send('finding_new_conversation'.encode('ascii'))
-            del nicknames[index]
-            del clients[index]
-            room.room_clients.remove(client)
-            break
+        finding_new_conversation = room.size() < 2
 
         if finding_new_conversation:
             if waiting_rooms and (room not in waiting_rooms):
@@ -50,17 +40,42 @@ def handle_client(client, room):
                 room = waiting_room
                 room.room_clients.append(client)
                 del waiting_rooms[0]
-                finding_new_conversation = False
+
+                client.send('New conversation found!')
+                # finding_new_conversation = False
+
             elif room not in waiting_rooms:
                 waiting_rooms.append(room)
-                print(nicknames[clients.index(client)], ': adding to waiting rooms ', waiting_rooms)
+                print(nicknames[clients.index(client)], ': adding to waiting rooms (1) ', waiting_rooms)
+                # client.send('We are looking for new conversation...'.encode('ascii'))
 
-        ####
-        if len(room.room_clients) > 1:
-            mate_ind = (room.room_clients.index(client) + 1) % 2
-            mate = room.room_clients[mate_ind]
-            print(nicknames[clients.index(client)], ': mate ', mate, nicknames[clients.index(mate)])
-        ###
+                continue
+
+        try:
+            message = client.recv(1024)
+            print(nicknames[clients.index(client)], ' : message : ', message.decode('ascii'))
+            if message.decode('ascii') == 'finding_new_conversation':
+                finding_new_conversation = True
+                continue
+        except:
+            client.close()
+            index = clients.index(client)
+            nickname = nicknames[index]
+
+            mate = room.get_mate(client)
+
+            if mate:
+                mate.send(f'{nickname} left!'.encode('ascii'))
+                mate.send('finding_new_conversation'.encode('ascii'))
+
+            del nicknames[index]
+            del clients[index]
+            room.room_clients.remove(client)
+
+            break
+
+        mate = room.get_mate(client)
+
         try:
             if mate:
                 mate.send(message)
@@ -73,7 +88,7 @@ def handle_client(client, room):
             if room not in waiting_rooms:
                 waiting_rooms.append(room)
             # print('exception while sending a message')
-                print(nicknames[clients.index(client)], ': adding to waiting rooms ', waiting_rooms)
+                print(nicknames[clients.index(client)], ': adding to waiting rooms (2) ', waiting_rooms)
 
 
 def receive():

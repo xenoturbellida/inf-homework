@@ -10,6 +10,7 @@ def receive():
                 client.send(nickname.encode('ascii'))
             elif message == 'finding_new_conversation':
                 client.send('finding_new_conversation'.encode('ascii'))
+                print('We are looking for new conversation...')
             else:
                 print(message)
         except:
