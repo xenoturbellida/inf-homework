@@ -2,15 +2,23 @@ import threading
 import socket
 
 
+block_client = False
+
+
 def receive():
+    global block_client
     while True:
         try:
             message = client.recv(1024).decode('ascii')
             if message == 'NICK':
                 client.send(nickname.encode('ascii'))
-            elif message == 'finding_new_conversation':
-                client.send('finding_new_conversation'.encode('ascii'))
+            elif message == 'find_new_conversation':
+                client.send('find_new_conversation'.encode('ascii'))
                 print('We are looking for new conversation...')
+                block_client = True
+            elif message == 'new_conversation_found':
+                client.send('new_conversation_found'.encode('ascii'))
+                block_client = False
             else:
                 print(message)
         except:
@@ -20,10 +28,13 @@ def receive():
 
 
 def write():
+    global block_client
     while True:
-        message = input()
-        message_to_send = f'{nickname}: {message}'
-        client.send(message_to_send.encode('ascii'))
+        if not block_client:
+            message = input()
+            print('loop ', message)
+            message_to_send = f'{nickname}: {message}'
+            client.send(message_to_send.encode('ascii'))
 
 
 nickname = input('Choose your nickname: ')
