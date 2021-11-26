@@ -18,6 +18,7 @@ def receive():
                 block_client = True
             elif message == 'new_conversation_found':
                 client.send('new_conversation_found'.encode('ascii'))
+                print('New conversation found!')
                 block_client = False
             else:
                 print(message)
@@ -32,9 +33,10 @@ def write():
     while True:
         if not block_client:
             message = input()
-            print('loop ', message)
-            message_to_send = f'{nickname}: {message}'
-            client.send(message_to_send.encode('ascii'))
+            if not block_client:
+                print('loop (0)', message)
+                message_to_send = f'{nickname}: {message}'
+                client.send(message_to_send.encode('ascii'))
 
 
 nickname = input('Choose your nickname: ')
