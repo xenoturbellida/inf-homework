@@ -17,12 +17,11 @@ def receive():
                 print('We are looking for new conversation...')
                 block_client = True
             elif message == 'new_conversation_found':
-                client.send('new_conversation_found'.encode('ascii'))
                 print('New conversation found!')
                 block_client = False
             else:
                 print(message)
-        except:
+        except socket.error:
             print('An error occurred!')
             client.close()
             break
@@ -34,7 +33,6 @@ def write():
         if not block_client:
             message = input()
             if not block_client:
-                print('loop (0)', message)
                 message_to_send = f'{nickname}: {message}'
                 client.send(message_to_send.encode('ascii'))
 

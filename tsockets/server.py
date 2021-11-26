@@ -22,8 +22,6 @@ def handle_client(client, room):
     while True:
         try:
             message = client.recv(1024)
-            if message.decode('ascii') == 'new_conversation_found':
-                continue
             if message.decode('ascii') == 'find_new_conversation':
                 if waiting_rooms:
                     waiting_room = waiting_rooms[0]
@@ -36,7 +34,7 @@ def handle_client(client, room):
                 waiting_rooms.append(room)
                 client.send('You were added to the waiting list.'.encode('ascii'))
                 continue
-        except:
+        except socket.error:
             client.close()
             index = clients.index(client)
             nickname = nicknames[index]
@@ -50,6 +48,9 @@ def handle_client(client, room):
             del nicknames[index]
             del clients[index]
             room.room_clients.remove(client)
+
+            print(f"{nickname} has left the chat. Current number of clients: {len(clients)}")
+
             break
 
         mate = room.get_mate(client)
@@ -68,6 +69,7 @@ def receive():
         clients.append(client)
 
         print(f'Nickname is {nickname}')
+        print(f"Current number of clients: {len(clients)}")
         client.send('Connected to server'.encode('ascii'))
 
         if waiting_rooms:
@@ -82,6 +84,7 @@ def receive():
             client_thread = Thread(target=handle_client, args=(client, Room([client])))
             client_thread.start()
             client.send('find_new_conversation'.encode('ascii'))
+
 
 HOST = '127.0.0.1'
 PORT = 50007
