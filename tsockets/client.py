@@ -1,7 +1,8 @@
 import threading
 import socket
 
-
+# this variable is needed to deny sending messages
+# when conversation don't found
 block_client = False
 
 
